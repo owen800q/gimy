@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="適合 Samsung 電視的獨立 Gimy 劇迷播放器，無需登入。">
+  <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0f0d14">
+  <title>Gimy TV 影視目錄</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/home.css">
+  <script src="/state.js" defer></script><script src="/vendor/hls.light.min.js" defer></script><script src="/app.js" defer></script><script src="/home.js" defer></script>
+</head>
+<body><main class="shell">
+  <header class="masthead"><a href="/" class="brand"><span class="brand-mark" aria-hidden="true">▶</span><span>Gimy <strong>TV</strong></span></a><button id="home-back" class="tv-button outline" hidden>← 影視目錄</button><button id="sync-toggle" aria-controls="sync-panel" aria-expanded="false" class="tv-button outline">裝置同步</button></header>
+  <section id="sync-panel" class="sync-panel" aria-labelledby="sync-title" hidden>
+    <h2 id="sync-title" tabindex="-1">裝置同步</h2>
+    <p class="field-help">觀看紀錄會自動儲存到雲端。想在另一部電視或電腦接住睇，就在那部裝置輸入以下私人同步碼。持有同步碼的人可讀取及更改紀錄，請勿公開分享。</p>
+    <label for="sync-code">此裝置的私人同步碼</label><div class="sync-fields"><input id="sync-code" class="tv-input" readonly autocomplete="off"><button id="sync-copy" class="tv-button secondary">複製同步碼</button></div>
+    <form id="sync-form"><label for="sync-input">改用另一部裝置的紀錄</label><div class="sync-fields"><input id="sync-input" class="tv-input" autocomplete="off" maxlength="64" placeholder="貼上 32 位私人同步碼" required><button class="tv-button" type="submit">切換紀錄</button></div></form>
+    <p id="sync-status" class="field-help" role="status">正在連接雲端紀錄…</p>
+    <button id="sync-close" class="tv-button outline">關閉</button>
+  </section>
+  <section class="workspace">
+    <div class="watch-column">
+      <section id="home-browser" aria-labelledby="home-heading">
+        <div class="home-heading"><div><span class="eyebrow">影視目錄</span><h1 id="home-heading">今晚，想睇啲乜？</h1><p>揀劇、選集數，直接喺電視開播。</p></div><span class="source-badge">片源 · Gimy 劇迷</span></div>
+        <nav class="catalog-presets" aria-label="快速分類"><button class="filter-chip" data-preset="history" aria-pressed="false">觀看歷史</button><button class="filter-chip" data-type="2" aria-pressed="true">電視劇</button><button class="filter-chip" data-type="1" aria-pressed="false">電影</button><button class="filter-chip" data-type="4" aria-pressed="false">動漫</button><button class="filter-chip" data-type="29" aria-pressed="false">綜藝</button><button class="filter-chip" data-type="13" aria-pressed="false">陸劇</button><button class="filter-chip" data-type="20" aria-pressed="false">韓劇</button><button class="filter-chip" data-type="15" aria-pressed="false">日劇</button><button class="filter-chip" data-type="14" aria-pressed="false">台劇</button><button class="filter-chip" data-type="21" aria-pressed="false">港劇</button><button class="filter-chip" data-type="16" aria-pressed="false">美劇</button><button class="filter-chip" data-type="34" aria-pressed="false">短劇</button><button class="filter-chip" data-type="22" aria-pressed="false">紀錄片</button></nav>
+        <form id="catalog-form" class="catalog-filters"><label class="catalog-query">搜尋影片<input id="catalog-q" class="tv-input" maxlength="80" placeholder="輸入繁體中文劇名，例如：鬼滅之刃"></label><label>地區<select id="catalog-area"><option value="">全部地區</option><option>中國大陸</option><option>香港</option><option>台灣</option><option>日本</option><option>韓國</option><option>美國</option><option>歐美</option><option>英國</option><option>泰國</option></select></label><label>年份<select id="catalog-year"><option value="">全部年份</option></select></label><label>排序<select id="catalog-sort"><option value="">預設</option><option value="time">最近更新</option><option value="time_add">最新上架</option><option value="hits_week">本週人氣</option><option value="hits">總人氣</option></select></label><button class="tv-button" type="submit">搜尋</button></form>
+        <div class="catalog-caption"><p id="catalog-status" role="status" aria-live="polite">正在讀取影視目錄…</p><button id="catalog-clear" class="text-button">重設篩選</button></div>
+        <div id="catalog-error" class="error-box" role="alert" hidden></div><button id="catalog-retry" class="tv-button outline" hidden>重新載入目錄</button>
+        <div id="watch-history" class="watch-history" hidden></div><div id="catalog-grid" class="catalog-grid" aria-label="影片列表"></div><button id="catalog-more" class="tv-button outline catalog-more" hidden>更多影片</button>
+      </section>
+      <section id="home-detail" class="show-detail" aria-labelledby="detail-title" hidden><div class="detail-top"><div class="detail-poster"><span aria-hidden="true">GIMY</span><img id="detail-cover" alt="" referrerpolicy="no-referrer" hidden></div><div class="detail-heading"><span class="eyebrow">準備開播</span><h1 id="detail-title"></h1><p id="detail-facts"></p><p id="detail-people" class="detail-people"></p><p id="detail-history" class="resume-reminder" role="status"></p><button id="detail-episodes" class="tv-button" disabled>↓ 選擇集數</button><p class="field-help">在下方選線路及集數，再按播放。</p></div></div><h2>劇情簡介</h2><p id="detail-summary" class="detail-summary"></p><a id="detail-source" class="source-link" target="_blank" rel="noreferrer" hidden>原網頁 ↗</a>
+        <section id="detail-comments" class="detail-comments" aria-labelledby="comments-title" hidden>
+          <h2 id="comments-title">劇迷留言</h2>
+          <p class="field-help">來自 Gimy 劇迷的觀眾留言，內容可能包含劇透。</p>
+          <div id="comments-list" class="comments-list"></div>
+        </section>
+      </section>
+      <section id="watch-player" hidden>
+      <div class="screen" id="screen">
+        <video id="video" controls playsinline preload="metadata" tabindex="0" aria-label="影片播放器"></video>
+        <div class="screen-empty" id="empty"><div class="screen-symbol" aria-hidden="true">▶</div><h1 id="empty-title">大螢幕，準備開播。</h1><p id="empty-description">從影視目錄選擇想看的影片。</p></div>
+      </div>
+      <div class="now-playing"><div><span class="eyebrow" id="status" role="status" aria-live="polite">準備播放</span><h2 id="title">選擇一集</h2></div><a class="source-link" id="source" target="_blank" rel="noreferrer" hidden>原網頁 ↗</a></div>
+      <p id="resume-status" class="resume-reminder" role="status" hidden></p><div class="controls"><button class="tv-button play-button" id="play" disabled>▶ 播放</button><button class="tv-button secondary" id="reload" disabled>↻ 重新載入</button><button class="tv-button secondary" id="fullscreen" disabled>全螢幕</button><button class="tv-button outline" id="previous" disabled>上一集</button><button class="tv-button outline" id="next" disabled>下一集</button></div>
+      <div class="error-box" id="error" role="alert" hidden></div>
+      <p class="remote-hint">方向鍵選擇按鈕；選取影片後，左右鍵跳轉 10 秒。播放不順可在下方改選其他線路。</p>
+      </section>
+      <section id="episode-picker" class="episode-picker" hidden aria-labelledby="series-title"><span class="eyebrow">選擇線路及集數</span><h3 id="series-title">先揀一套劇</h3><div id="routes" class="route-bar" role="group" aria-label="播放線路"></div><p class="field-help" id="episodes-status" role="status" aria-live="polite">集數會顯示喺呢度。</p><div id="episodes" class="episode-grid" aria-label="集數"></div><div id="episodes-error" class="error-box" role="alert" hidden></div><button id="episodes-retry" class="tv-button outline" hidden>重新讀取集數</button></section>
+    </div>
+  </section><footer>獨立相容介面，並非 Gimy 劇迷官方網站。片源及資料：gimyai.tw。影片由原站線路直接播放，可用性視乎原站。</footer>
+</main></body></html>
