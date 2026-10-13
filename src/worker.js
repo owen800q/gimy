@@ -28,7 +28,9 @@ export default {
 
 async function route(request, env, url, origin, tvApp) {
   try {
-    if (!tvApp && ((origin && origin !== url.origin) || request.headers.get('sec-fetch-site') === 'cross-site')) throw new PlaybackError('請從播放器網頁開啟。', 403);
+    // Samsung TVs running the packaged app send no Origin at all; browsers always send one on cross-site CORS fetches.
+    const tvRuntime = !origin && request.headers.get('sec-fetch-mode') === 'cors';
+    if (!tvApp && ((origin && origin !== url.origin) || (request.headers.get('sec-fetch-site') === 'cross-site' && !tvRuntime))) throw new PlaybackError('請從播放器網頁開啟。', 403);
     if (url.pathname === '/api/history') return await historyRoute(request, env);
     if (request.method === 'GET') {
       const q = url.searchParams;

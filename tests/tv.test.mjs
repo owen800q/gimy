@@ -21,6 +21,9 @@ test('the packaged TV app origin may call the API with CORS headers', async () =
     assert.equal(history.status, 401);
     assert.equal(history.headers.get('access-control-allow-origin'), origin);
   }
+  // Tizen 9 TVs send no Origin, only Sec-Fetch headers; a cross-site page navigation is still refused.
+  assert.equal((await call('/api/health', { headers: { 'Sec-Fetch-Site': 'cross-site', 'Sec-Fetch-Mode': 'cors' } })).status, 200);
+  assert.equal((await call('/api/health', { headers: { 'Sec-Fetch-Site': 'cross-site', 'Sec-Fetch-Mode': 'navigate' } })).status, 403);
   const web = await call('/api/health');
   assert.equal(web.headers.get('access-control-allow-origin'), null);
   assert.equal((await call('/api/health', { headers: { Origin: 'https://evil.test' } })).status, 403);
