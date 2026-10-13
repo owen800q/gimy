@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1920, initial-scale=1">
+  <!-- Poster and video CDNs reject requests carrying a foreign Referer. -->
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Gimy TV</title>
+  <link rel="icon" href="../favicon.svg">
+  <link rel="stylesheet" href="tv.css">
+  <script src="config.js"></script>
+  <script src="vendor/hls.light.min.js" defer></script>
+  <script src="tv.js" defer></script>
+</head>
+<body>
+  <div id="app" class="app">
+    <nav id="sidebar" class="sidebar" aria-label="主選單" data-focus-group="sidebar">
+      <div class="sidebar-brand"><img class="brand-mark" src="brand.png" alt=""><span class="sidebar-label">Gimy <b>TV</b></span></div>
+      <ul class="sidebar-list">
+        <li><button class="sidebar-item focusable" data-tab="browse" data-nav-left="none"><i class="icon" data-icon="grid"></i><span class="sidebar-label">影視目錄</span></button></li>
+        <li><button class="sidebar-item focusable" data-tab="search" data-nav-left="none"><i class="icon" data-icon="search"></i><span class="sidebar-label">搜尋</span></button></li>
+        <li><button class="sidebar-item focusable" data-tab="history" data-nav-left="none"><i class="icon" data-icon="clock"></i><span class="sidebar-label">觀看歷史</span></button></li>
+        <li><button class="sidebar-item focusable" data-tab="sync" data-nav-left="none"><i class="icon" data-icon="sync"></i><span class="sidebar-label">裝置同步</span></button></li>
+      </ul>
+    </nav>
+    <main id="stage" class="stage"></main>
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+  </div>
+</body>
+</html>

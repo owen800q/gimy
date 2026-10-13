@@ -16,6 +16,37 @@ The project is a Cloudflare Worker with static assets:
 
 Open the Worker's `workers.dev` address on the TV. Browse by category, region, year and order, or search by title. Select a show, pick a route (線路) and an episode, then press **播放**. Arrow keys move focus; with the video focused, left/right seek ten seconds. Play/pause, fast-forward and rewind remote keys are supported.
 
+## Samsung TV app
+
+Besides the web page, the project ships a remote-driven Samsung TV app (Tizen 4.0+, 2018 and newer TVs), modelled on the navigation of [samsung-hongguo-drama](https://github.com/owen800q/samsung-hongguo-drama): a collapsible icon rail (影視目錄, 搜尋, 觀看歷史, 裝置同步), poster grids that load more as you scroll, a detail page with route and episode pickers, and a full-screen player with an on-screen control bar. It uses the same Worker API, so catalogue filters, search, route fallback, resume, watch history and device sync behave as on the web; history syncs between the TV app and the web page with the same private code.
+
+The app lives in `src/tv/` (one classic script, no dependencies, Chromium 56-safe — `tests/tv.test.mjs` guards against newer syntax). The Worker serves it at `/tv/`, which is also the easiest way to try it in a desktop browser.
+
+| Key | Browsing | Player |
+|-|-|-|
+| Arrows | Move focus; Left opens the sidebar | Controls hidden: Left/Right seek 10 s (presses add up), Up shows controls, Down opens episodes. Controls shown: move focus; on the progress bar Left/Right seek |
+| OK | Select; on a text field, open the TV keyboard | Play/pause |
+| Back | Close dialog, go back, then ask to exit | Hide controls, then leave the player |
+| Play/Pause, Play, Pause, Stop | — | As labelled |
+| Fast-forward / Rewind | — | Seek 30 s |
+| CH ▲/▼, Next/Previous | — | Next/previous episode |
+| Green / Yellow | — | Episode panel / route panel |
+
+Episodes play automatically, resume from saved progress and continue to the next episode when one ends; a route that needs the site's parser falls through to the next route. On a desktop keyboard Esc is Back, Space is play/pause and PageUp/PageDown change episode.
+
+### Package and install
+
+The packaged app runs from `file://` and calls your deployed Worker, which accepts the `file://`/`null` origin of the TV app (with CORS headers) in addition to its own origin.
+
+```sh
+npm run package:tv -- --api https://gimy-tv.<account>.workers.dev --profile <certificate-profile>
+# writes build/GimyTV.wgt (signed) — without --profile, an unsigned build/GimyTV-unsigned.wgt
+GIMY_API=https://gimy-tv.<account>.workers.dev scripts/tv.sh <tv-ip> <certificate-profile>
+# packages, installs and launches on a TV in Developer mode
+```
+
+Without `--api`, the TV asks for the Worker address under **裝置同步** (it can be changed there later too). Signing needs [Tizen Studio](https://developer.tizen.org/development/tizen-studio/download) with Samsung TV Extensions and a Samsung certificate profile whose distributor certificate lists the TV's DUID. To enable Developer mode, open Apps on the TV, press `1 2 3 4 5`, turn Developer mode on with this computer's IP and restart the TV. The widget metadata and the app icon are in `tizen/`.
+
 ## How it works
 
 The Worker reads gimyai.tw's public pages as text; no upstream scripts execute.
@@ -52,6 +83,7 @@ npm run build   # writes dist/
 npm test        # parser, Worker route and history tests with recorded fixtures
 npm run dev     # local preview on http://localhost:8787 (history stays local)
 npm run check:live   # optional: exercises the real site end to end
+npm run package:tv   # Samsung TV widget in build/ (see above)
 ```
 
 Edit `src/`, then rebuild `dist/` before committing. Tests use trimmed copies of real Gimy pages in `tests/fixtures/` and mocked upstream responses; `scripts/check-live.mjs` runs the same Worker code against the live site and fetches the resulting HLS playlist. `npx wrangler dev` runs the bundle in the Workers runtime with the Durable Object.

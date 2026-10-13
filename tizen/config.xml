@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
+        id="https://github.com/owen800q/gimy" version="1.0.0" viewmodes="maximized">
+    <!-- The package id must be exactly 10 alphanumeric characters. -->
+    <tizen:application id="GimyTvApp1.GimyTV" package="GimyTvApp1" required_version="4.0"/>
+    <name>Gimy TV</name>
+    <description>Gimy 劇迷電視版：瀏覽、搜尋及播放影片，觀看紀錄可跨裝置同步，全程遙控器操作。</description>
+    <icon src="icon.png"/>
+    <content src="index.html"/>
+    <author>Gimy TV contributors</author>
+
+    <!-- The Worker API, posters and video CDNs are reached directly; whitelisted origins bypass CORS. -->
+    <access origin="*" subdomains="true"/>
+    <tizen:allow-navigation>*</tizen:allow-navigation>
+    <tizen:content-security-policy>default-src 'self' https: data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; media-src * blob: data:; connect-src *;</tizen:content-security-policy>
+
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+    <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+
+    <tizen:profile name="tv-samsung"/>
+    <feature name="http://tizen.org/feature/screen.size.all"/>
+    <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable"
+                   encryption="disable" install-location="auto" hwkey-event="enable"/>
+</widget>

@@ -13,3 +13,9 @@
   Cache-Control: public, max-age=0, must-revalidate
 /home.css
   Cache-Control: public, max-age=0, must-revalidate
+/tv/tv.js
+  Cache-Control: public, max-age=0, must-revalidate
+/tv/tv.css
+  Cache-Control: public, max-age=0, must-revalidate
+/tv/config.js
+  Cache-Control: public, max-age=0, must-revalidate
