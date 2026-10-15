@@ -9,10 +9,12 @@
     <content src="index.html"/>
     <author>Gimy TV contributors</author>
 
-    <!-- The Worker API, posters and video CDNs are reached directly; whitelisted origins bypass CORS. -->
+    <!-- The Worker API, posters and video CDNs are reached directly; whitelisted origins bypass CORS.
+         Over-the-air app updates load their scripts and styles from the Worker
+         (scripts/package-tv.mjs swaps in the --api origin). -->
     <access origin="*" subdomains="true"/>
     <tizen:allow-navigation>*</tizen:allow-navigation>
-    <tizen:content-security-policy>default-src 'self' https: data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; media-src * blob: data:; connect-src *;</tizen:content-security-policy>
+    <tizen:content-security-policy>default-src 'self' https: data: blob:; script-src 'self' https://tv.codeboxhk.com; style-src 'self' 'unsafe-inline' https://tv.codeboxhk.com; img-src * data: blob:; media-src * blob: data:; connect-src *;</tizen:content-security-policy>
 
     <tizen:privilege name="http://tizen.org/privilege/internet"/>
     <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>

@@ -6,7 +6,7 @@
   "observability": { "logs": { "enabled": true } },
   "durable_objects": { "bindings": [{ "name": "WATCH_HISTORY", "class_name": "WatchHistory" }] },
   "migrations": [{ "tag": "watch-history-v1", "new_sqlite_classes": ["WatchHistory"] }],
-  "build": { "command": "node scripts/build.mjs" },
+  "build": { "command": "node scripts/build.mjs && node scripts/ota-update.mjs" },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

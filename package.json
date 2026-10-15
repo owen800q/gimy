@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --test tests/*.test.mjs ota/*.test.mjs",
     "check:live": "node scripts/check-live.mjs",
     "dev": "node scripts/build.mjs && node scripts/dev.mjs",
     "package:tv": "node scripts/package-tv.mjs"
