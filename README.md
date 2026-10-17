@@ -41,11 +41,18 @@ The packaged app runs from `file://` and calls your deployed Worker, which accep
 ```sh
 npm run package:tv -- --api https://gimy-tv.<account>.workers.dev --profile <certificate-profile>
 # writes build/GimyTV.wgt (signed) — without --profile, an unsigned build/GimyTV-unsigned.wgt
+# (the widget files are in build/widget)
 GIMY_API=https://gimy-tv.<account>.workers.dev scripts/tv.sh <tv-ip> <certificate-profile>
 # packages, installs and launches on a TV in Developer mode
 ```
 
 Without `--api`, the TV asks for the Worker address under **裝置同步** (it can be changed there later too). Signing needs [Tizen Studio](https://developer.tizen.org/development/tizen-studio/download) with Samsung TV Extensions and a Samsung certificate profile whose distributor certificate lists the TV's DUID. To enable Developer mode, open Apps on the TV, press `1 2 3 4 5`, turn Developer mode on with this computer's IP and restart the TV. The widget metadata and the app icon are in `tizen/`.
+
+### Updates
+
+Installed TVs update themselves. The Worker build publishes the TV app at `/tv-app/` (`scripts/ota-update.mjs`), and the app downloads a new build in the background and uses it from the next launch. A push to `main` therefore reaches TVs without reinstalling. Updates come from the `--api` Worker, `https://tv.codeboxhk.com` by default. See [ota/README.md](ota/README.md).
+
+Every push to `main` also publishes a GitHub release with the widget (`.github/workflows/release.yml`). Reinstall it only after changing `tizen/config.xml`, the icon or the loader. The release is signed when the repository has the certificate secrets listed in ota/README.md.
 
 ## How it works
 
