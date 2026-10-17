@@ -31,7 +31,7 @@ const dir = path.join(root, 'dist', 'tv');
 const origin = api || UPDATES_ORIGIN;
 const id = await writeWidget({
   dir, html: tvPage(await readFile(path.join(dir, 'index.html'), 'utf8')), exclude: LOCAL_FILES, stage,
-  key: 'gimy', origin, text: '已下載新版本，下次開啟時套用', preHead: PRE_HEAD,
+  key: 'gimy', origin, text: '已下載新版本，下次開啟時套用', updated: '已更新至新版本', preHead: PRE_HEAD,
 });
 // Without --api the app asks for the server address under 裝置同步 on first launch.
 await writeFile(path.join(stage, 'config.js'), api ? 'window.GIMY_API = ' + JSON.stringify(api) + ';\n' : '// Set the Worker address under 裝置同步 on the TV.\n');
