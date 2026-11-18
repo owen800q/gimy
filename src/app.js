@@ -29,10 +29,11 @@
     if(hls){hls.destroy();hls=null;}
     video.pause();video.removeAttribute('src');video.load();
   }
-  // Samsung TVs and Safari play HLS natively; other browsers use hls.js over Media Source Extensions.
+  // Prefer native HLS on Samsung TVs and Safari. Desktop Chromium uses hls.js.
   function attach(data){
     detach();
-    if(data.type==='hls'&&!video.canPlayType('application/vnd.apple.mpegurl')&&window.Hls?.isSupported()){
+    const chromium=/Chrom(?:e|ium)\//.test(navigator.userAgent)&&!/Tizen/i.test(navigator.userAgent);
+    if(data.type==='hls'&&(chromium||!video.canPlayType('application/vnd.apple.mpegurl'))&&window.Hls?.isSupported()){
       hls=new window.Hls({enableWorker:false,maxBufferLength:30});
       hls.on(window.Hls.Events.ERROR,(_,detail)=>{
         if(!detail.fatal)return;
@@ -195,12 +196,16 @@
     $('detail-comments').before($('episode-picker'));renderPicker();
   });
   document.addEventListener('gimy:home',()=>{stop();showRequest?.abort();$('episode-picker').hidden=true;});
-  document.addEventListener('gimy:watch',e=>void prepare(e.detail.seriesId,e.detail.sid,Number(e.detail.episodeId.split('-')[1])));
+  document.addEventListener('gimy:watch',e=>{
+    const item=e.detail;
+    void prepare(item.id||item.seriesId,item.sid,item.nid??Number(item.episodeId.split('-')[1]));
+  });
   document.addEventListener('gimy:route',()=>{
     const p=S.route();
     if(p.get('view')!=='watch')return;
     const [id,sid,nid]=['id','sid','nid'].map(k=>p.get(k)||'');
-    if(!/^\d{1,10}$/.test(id)||!/^\d{1,5}$/.test(sid)||!/^\d{1,5}$/.test(nid))return;
+    const episodePattern=id?.startsWith('io')?/^\d{1,10}$/:/^\d{1,5}$/;
+    if(!/^(?:io)?\d{1,10}$/.test(id)||!/^\d{1,5}$/.test(sid)||!episodePattern.test(nid))return;
     if(playback&&playback.id===id&&playback.sid===Number(sid)&&playback.nid===Number(nid))return;
     void prepare(id,Number(sid),Number(nid),{route:false});
   });

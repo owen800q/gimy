@@ -2,7 +2,8 @@ const historyHeaders={'Cache-Control':'no-store','Content-Type':'application/jso
 const historyResponse=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:historyHeaders});
 // An episode is a title plus episode number; the route (sid) is remembered for resuming.
 export function validProgress(data){
-  if(!data||!/^\d{1,10}-\d{1,5}$/.test(String(data.episodeId))||!/^\d{1,10}$/.test(String(data.seriesId))||String(data.episodeId).split('-')[0]!==String(data.seriesId)||!Number.isInteger(data.sid)||data.sid<0||data.sid>99999||!Number.isFinite(data.position)||data.position<0||data.position>86400||!Number.isFinite(data.duration)||data.duration<=0||data.duration>86400||data.position>data.duration+1||!Number.isInteger(data.revision)||data.revision<0||typeof data.title!=='string'||data.title.length>350||typeof data.seriesTitle!=='string'||data.seriesTitle.length>350)return null;
+  const episodePattern = /^(?:\d{1,10}-\d{1,5}|io\d{1,10}-\d{1,10})$/;
+  if(!data||!episodePattern.test(String(data.episodeId))||String(data.episodeId).split('-')[0]!==String(data.seriesId)||!Number.isInteger(data.sid)||data.sid<0||data.sid>99999||!Number.isFinite(data.position)||data.position<0||data.position>86400||!Number.isFinite(data.duration)||data.duration<=0||data.duration>86400||data.position>data.duration+1||!Number.isInteger(data.revision)||data.revision<0||typeof data.title!=='string'||data.title.length>350||typeof data.seriesTitle!=='string'||data.seriesTitle.length>350)return null;
   return {episodeId:String(data.episodeId),seriesId:String(data.seriesId),sid:data.sid,title:data.title,seriesTitle:data.seriesTitle,position:Math.min(data.position,data.duration),duration:data.duration,completed:data.completed===true,revision:data.revision};
 }
 // One durable object per unguessable sync profile; no public shared history.

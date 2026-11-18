@@ -193,6 +193,68 @@ function errorResponse(error) {
   return Response.json({ error: error instanceof PlaybackError ? error.message : '服務暫時無法處理，請稍後重試。' }, { status: error instanceof PlaybackError ? error.status : 500, headers: { 'Cache-Control': 'no-store' } });
 }
 
+// gimytv.io exposes episode slugs and watch pages instead of numeric route/episode pairs.
+
+const GIMY_TV_SITE = 'https://gimytv.io';
+const gimyTvId = id => /^io\d{1,10}$/.test(id || '');
+
+const detailPath = /^\/voddetail2\/(\d{1,10})\.html$/;
+const episodePath = /^\/eps\/(\d{1,10})-([a-z0-9-]{1,100})\.html$/;
+function gimyTvLink(input) {
+  let url;
+  try { url = new URL(input); } catch { return null; }
+  if (url.origin !== GIMY_TV_SITE || url.username || url.password) return null;
+  const episode = url.pathname.match(episodePath);
+  const match = episode || url.pathname.match(detailPath);
+  return match ? { id: 'io' + match[1], episode: episode ? url.pathname : null } : null;
+}
+
+// A stable numeric key keeps saved progress attached to the slug as new episodes arrive.
+function slugKey(slug) {
+  let hash = 2166136261;
+  for (const char of slug) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  return hash >>> 0;
+}
+
+function gimyTvDetail(html, id) {
+  const cleaned = html.replace(/<!--[\s\S]*?-->/g, '');
+  const title = plainText(cleaned.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || '', 200);
+  if (!title) throw new PlaybackError('找不到這部影片的資料。');
+  const info = label => plainText(cleaned.match(new RegExp('<li\\b[^>]*>\\s*<span\\b[^>]*>' + label + '：([\\s\\S]*?)</li>', 'i'))?.[1] || '', 300);
+  const rawId = id.slice(2);
+  const episodes = new Map();
+  for (const match of cleaned.matchAll(/<a\b[^>]*\shref=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const link = match[1].match(episodePath);
+    if (!link || link[1] !== rawId) continue;
+    const nid = slugKey(link[2]);
+    const previous = episodes.get(nid);
+    if (previous && previous.path !== match[1]) throw new PlaybackError('原站集數編號重複。');
+    if (!previous) episodes.set(nid, { nid, label: plainText(match[2], 40) || link[2], path: match[1] });
+  }
+  const source = GIMY_TV_SITE + '/voddetail2/' + rawId + '.html';
+  const rawSummary = cleaned.match(/<meta\s+name=["']description["']\s+content=["']([^"']*)/i)?.[1] || '';
+  return {
+    id, title, source, pic: GIMY_TV_SITE + '/poster/' + rawId + '.jpg',
+    status: info('狀態'), category: info('類別'), year: info('年代').match(/\d{4}/)?.[0] || '',
+    area: info('國家/地區'), language: info('語言/字幕'), actors: info('主演'), director: info('導演'),
+    summary: plainText(rawSummary.replace(/^[^|]*\|\s*/, ''), 2000),
+    episodes: [...episodes.values()],
+  };
+}
+
+function gimyTvWatchPaths(html) {
+  const paths = new Set();
+  const cleaned = html.replace(/<!--[\s\S]*?-->/g, '');
+  for (const match of cleaned.matchAll(/<(?:a|iframe)\b[^>]*\s(?:href|src)=["'](\/_watch\/\d{1,12})["']/gi)) paths.add(match[1]);
+  return [...paths].slice(0, 8);
+}
+
+function gimyTvMedia(html) {
+  const url = html.match(/^\s*(?:var|let|const)\s+url\s*=\s*(["'])(https:\/\/[^"'\s]+)\1\s*;/m)?.[2];
+  return mediaUrl(url);
+}
+
+
 
 // Short-lived memory cache plus single-flight requests, so a TV grid does not fan out upstream.
 const memory = new Map();
@@ -212,7 +274,7 @@ async function cached(key, ttl, load) {
   return promise;
 }
 async function page(url, stage) {
-  const response = await upstream(url);
+  const response = await upstream(url, { headers: { Referer: new URL(url).origin + '/' } });
   checkStatus(response, stage);
   return boundedText(response);
 }
@@ -230,6 +292,14 @@ async function browse(params) {
 
 async function search(query) {
   const q = String(query || '').trim();
+  if (/^https?:\/\//i.test(q) && q.length <= 240) {
+    const link = gimyTvLink(q);
+    if (!link) throw new PlaybackError('請輸入 gimytv.io 的影片或集數網址。', 400);
+    const { id, title, pic, status, episodes } = await loadGimyTv(link.id);
+    const episode = episodes.find(item => item.path === link.episode);
+    if (link.episode && !episode) throw new PlaybackError('此連結的集數已不在原站列表。', 404);
+    return { items: [{ id, title, pic, status, ...(episode && { episode: { sid: 1, nid: episode.nid, label: episode.label } }) }] };
+  }
   if (!q || q.length > 80) throw new PlaybackError('請輸入 1 至 80 字的影片名稱。', 400);
   // /find/ pages and any `wd=` query string are behind the site's browser challenge; the path-style suggest route is not.
   const url = SITE + '/index.php/ajax/suggest/mid/1/limit/30/wd/' + encodeURIComponent(q);
@@ -245,7 +315,21 @@ async function playerFlags() {
   try { return await cached('playerconfig', 3600, async () => parsePlayerConfig(await page(SITE + '/static/js/playerconfig.js', '讀取播放器設定'))); }
   catch { return null; }
 }
+function loadGimyTv(id) {
+  return cached('detail:' + id, 300, async () => gimyTvDetail(
+    await page(GIMY_TV_SITE + '/voddetail2/' + id.slice(2) + '.html', '讀取影片資料'), id
+  ));
+}
+
 async function detail(id) {
+  if (gimyTvId(id)) {
+    const { episodes, ...show } = await loadGimyTv(id);
+    const routes = episodes.length ? [{
+      sid: 1, name: '自動選擇線路', direct: null,
+      episodes: episodes.map(({ nid, label }) => ({ nid, label })),
+    }] : [];
+    return { ...show, routes, comments: [] };
+  }
   if (!/^\d{1,10}$/.test(id || '')) throw new PlaybackError('影片編號無效。', 400);
   return cached('detail:' + id, 300, async () => {
     const [html, flags] = await Promise.all([page(SITE + '/detail/' + id + '.html', '讀取影片資料'), playerFlags()]);
@@ -254,8 +338,36 @@ async function detail(id) {
   });
 }
 
+async function resolveGimyTv(id, sid, nid) {
+  if (sid !== '1' || !/^\d{1,10}$/.test(nid || '')) throw new PlaybackError('線路或集數編號無效。', 400);
+  const show = await loadGimyTv(id);
+  const index = show.episodes.findIndex(item => item.nid === Number(nid));
+  if (index < 0) throw new PlaybackError('原站暫未提供此集數。', 404);
+  const episode = show.episodes[index];
+  const source = GIMY_TV_SITE + episode.path;
+  const target = offset => {
+    const item = show.episodes[index + offset];
+    return item ? { sid: 1, nid: item.nid } : null;
+  };
+  return cached('play:' + source, 120, async () => {
+    const paths = gimyTvWatchPaths(await page(source, '讀取播放頁面'));
+    let upstreamError;
+    for (const path of paths) {
+      try {
+        const media = gimyTvMedia(await page(GIMY_TV_SITE + path, '讀取影片線路'));
+        return { id, sid: 1, nid: episode.nid, title: show.title, type: /\.mp4$/i.test(new URL(media).pathname) ? 'mp4' : 'hls', media, next: target(1), previous: target(-1), source };
+      } catch (error) {
+        if (!(error instanceof PlaybackError)) throw error;
+        if (error.status !== 422) upstreamError = error;
+      }
+    }
+    throw upstreamError || new PlaybackError('原站暫未提供可直接播放的線路。', 422);
+  });
+}
+
 const smallInt = value => /^\d{1,5}$/.test(value || '') ? Number(value) : null;
 async function resolve(id, sidInput, nidInput) {
+  if (gimyTvId(id)) return resolveGimyTv(id, sidInput, nidInput);
   const sid = smallInt(sidInput), nid = smallInt(nidInput);
   if (!/^\d{1,10}$/.test(id || '') || sid == null || nid == null) throw new PlaybackError('影片、線路或集數編號無效。', 400);
   const source = SITE + '/play/' + id + '-' + sid + '-' + nid + '.html';
@@ -270,7 +382,8 @@ const historyHeaders={'Cache-Control':'no-store','Content-Type':'application/jso
 const historyResponse=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:historyHeaders});
 // An episode is a title plus episode number; the route (sid) is remembered for resuming.
 function validProgress(data){
-  if(!data||!/^\d{1,10}-\d{1,5}$/.test(String(data.episodeId))||!/^\d{1,10}$/.test(String(data.seriesId))||String(data.episodeId).split('-')[0]!==String(data.seriesId)||!Number.isInteger(data.sid)||data.sid<0||data.sid>99999||!Number.isFinite(data.position)||data.position<0||data.position>86400||!Number.isFinite(data.duration)||data.duration<=0||data.duration>86400||data.position>data.duration+1||!Number.isInteger(data.revision)||data.revision<0||typeof data.title!=='string'||data.title.length>350||typeof data.seriesTitle!=='string'||data.seriesTitle.length>350)return null;
+  const episodePattern = /^(?:\d{1,10}-\d{1,5}|io\d{1,10}-\d{1,10})$/;
+  if(!data||!episodePattern.test(String(data.episodeId))||String(data.episodeId).split('-')[0]!==String(data.seriesId)||!Number.isInteger(data.sid)||data.sid<0||data.sid>99999||!Number.isFinite(data.position)||data.position<0||data.position>86400||!Number.isFinite(data.duration)||data.duration<=0||data.duration>86400||data.position>data.duration+1||!Number.isInteger(data.revision)||data.revision<0||typeof data.title!=='string'||data.title.length>350||typeof data.seriesTitle!=='string'||data.seriesTitle.length>350)return null;
   return {episodeId:String(data.episodeId),seriesId:String(data.seriesId),sid:data.sid,title:data.title,seriesTitle:data.seriesTitle,position:Math.min(data.position,data.duration),duration:data.duration,completed:data.completed===true,revision:data.revision};
 }
 // One durable object per unguessable sync profile; no public shared history.

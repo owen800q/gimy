@@ -14,13 +14,16 @@
     return box;
   }
   function card(item){
-    const button=document.createElement('button');button.className='show-card';button.dataset.id=item.id;button.setAttribute('aria-label',[item.title,item.status].filter(Boolean).join('，'));
+    const badgeText=item.episode?.label||item.status;
+    const button=document.createElement('button');button.className='show-card';button.dataset.id=item.id;button.setAttribute('aria-label',[item.title,badgeText].filter(Boolean).join('，'));
     const box=poster(item.pic,item.title);
-    if(item.status){const badge=document.createElement('span');badge.className='poster-badge';badge.textContent=item.status;box.append(badge);}
+    if(badgeText){const badge=document.createElement('span');badge.className='poster-badge';badge.textContent=badgeText;box.append(badge);}
     const body=document.createElement('div');body.className='show-card-body';
     const title=document.createElement('span');title.className='show-card-title';title.textContent=item.title;
     const meta=document.createElement('span');meta.className='show-card-meta';meta.textContent=item.cast||'';body.append(title,meta);
-    button.append(box,body);button.addEventListener('click',()=>{returnFocus=item.id;void openShow(item.id);});
+    button.append(box,body);button.addEventListener('click',()=>{returnFocus=item.id;
+      if(item.episode)document.dispatchEvent(new CustomEvent('gimy:watch',{detail:{id:item.id,...item.episode}}));
+      else void openShow(item.id);});
     return button;
   }
   function filters(page){
@@ -77,7 +80,7 @@
       $('detail-people').textContent=[data.actors&&'主演：'+data.actors,data.director&&'導演：'+data.director].filter(Boolean).join('　');
       $('detail-summary').textContent=data.summary||'暫未有簡介，仍然可以從下方選集播放。';
       if(data.pic){$('detail-cover').src=data.pic;$('detail-cover').hidden=false;}
-      $('detail-source').href='https://gimyai.tw/detail/'+id+'.html';$('detail-source').hidden=false;
+      $('detail-source').href=data.source||'https://gimyai.tw/detail/'+id+'.html';$('detail-source').hidden=false;
       $('comments-list').replaceChildren(...data.comments.map(comment=>{
         const row=document.createElement('article');row.className='site-comment';
         const meta=document.createElement('div');meta.className='comment-meta';
@@ -112,7 +115,7 @@
   function restoreRoute(){
     const p=S.route();const view=p.get('view')||'home';++routeGeneration;
     if(view==='watch')return;
-    if(view==='detail'&&/^\d{1,10}$/.test(p.get('id')||'')){if(selected!==p.get('id')||$('home-detail').hidden)void openShow(p.get('id'),false);return;}
+    if(view==='detail'&&/^(?:io)?\d{1,10}$/.test(p.get('id')||'')){if(selected!==p.get('id')||$('home-detail').hidden)void openShow(p.get('id'),false);return;}
     document.dispatchEvent(new CustomEvent('gimy:home'));
     selected=null;detailRequest?.abort();
     $('watch-player').hidden=true;$('home-detail').hidden=true;$('home-browser').hidden=false;$('home-back').hidden=true;

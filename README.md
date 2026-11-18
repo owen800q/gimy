@@ -54,6 +54,12 @@ Installed TVs update themselves. The Worker build publishes the TV app at `/tv-a
 
 Every push to `main` also publishes a GitHub release with the widget (`.github/workflows/release.yml`). Reinstall it only after changing `tizen/config.xml`, the icon or the loader. The release is signed when the repository has the certificate secrets listed in ota/README.md.
 
+## Play a gimytv.io link
+
+Paste an HTTPS `gimytv.io/eps/…` link into **搜尋影片** on the web or **搜尋** in the TV app, then select the result for that episode. A `gimytv.io/voddetail2/…` link opens the full episode list. For example, try [年會不能停！2 · 正片](https://gimytv.io/eps/202653122-zheng-pian.html).
+
+The Worker reads the episode page and tries its listed watch pages for a direct HLS or MP4 URL. The player loads that media directly without the original page, its ads, or its scripts. These links use the same playback controls and watch history as the regular catalogue.
+
 ## How it works
 
 The Worker reads gimyai.tw's public pages as text; no upstream scripts execute.
@@ -73,7 +79,7 @@ Each show offers several routes. Routes whose player flag ends in `m3u8` (or the
 
 Playlists are served with `Access-Control-Allow-Origin: *` and need no cookies or referrer, so — unlike Anime1 — the browser plays the source HLS address directly and the Worker never proxies video. Samsung TVs (Tizen) and Safari play HLS natively; other browsers use the vendored [hls.js](https://github.com/video-dev/hls.js) light build (Apache-2.0, `src/vendor/`). Posters load directly from the source CDN with `no-referrer`.
 
-Only numeric ids, plain HTTPS media URLs with public host names and `.m3u8`/`.mp4` paths, and same-site detail/play links are accepted. There is no arbitrary-URL proxy. Listing, detail and search responses are cached in memory for five minutes, play pages for two, and the player configuration for an hour. Videos remain dependent on the source routes' availability; a route that buffers or fails can be switched under the episode list.
+Only recognised title and episode ids, plain HTTPS media URLs with public host names and `.m3u8`/`.mp4` paths, and same-site detail/play links are accepted. There is no arbitrary-URL proxy. Listing, detail and search responses are cached in memory for five minutes, play pages for two, and the player configuration for an hour. Videos remain dependent on the source routes' availability; a route that buffers or fails can be switched under the episode list.
 
 ## Watch history and device sync
 

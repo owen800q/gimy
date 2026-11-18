@@ -139,3 +139,45 @@ test('repeated detail requests are served from the short-lived cache', async t =
   assert.equal(requests.filter(r => r.url.includes('/detail/')).length, 1);
   assert.equal(requests.filter(r => r.url.includes('playerconfig')).length, 1);
 });
+
+test('gimytv.io link opens the exact episode and resolves a direct fallback stream', async t => {
+  const site = 'https://gimytv.io';
+  const first = '/eps/202653122-zheng-pian.html';
+  const second = '/eps/202653122-hd-guo-yu.html';
+  const media = 'https://video.example.com/movie/index.m3u8';
+  const requests = mockUpstream(t, {
+    [site + '/voddetail2/202653122.html']: `
+      <!-- <h1>Old title</h1> -->
+      <h1>年會不能停！2</h1>
+      <ul><li><span>狀態：</span>正片</li></ul>
+      <a href="${first}">正片</a><a href="${second}">HD國語</a>
+      <a href="/eps/123-other.html">另一套影片</a>`,
+    [site + second]: `
+      <iframe src="/_watch/101"></iframe>
+      <a href="/_watch/101" target="p-frame">線路1</a>
+      <a href="/_watch/102" target="p-frame">線路2</a>`,
+    [site + '/_watch/101']: '<script>var url = makePlayerUrl();</script>',
+    [site + '/_watch/102']: `<script>\nvar url = '${media}';\n</script>`,
+  });
+  const search = '/api/search?q=';
+  const response = await call(search + encodeURIComponent(site + second));
+  assert.equal(response.status, 200);
+  const { items: [item] } = await response.json();
+  assert.equal(item.title, '年會不能停！2');
+  assert.equal(item.id, 'io202653122');
+  assert.equal(item.episode.label, 'HD國語');
+  const show = await (await call('/api/detail?id=' + item.id)).json();
+  assert.equal(show.routes[0].episodes.length, 2);
+  const query = new URLSearchParams({ id: item.id, sid: item.episode.sid, nid: item.episode.nid });
+  const result = await call('/api/resolve?' + query);
+  assert.equal(result.status, 200);
+  const playback = await result.json();
+  assert.equal(playback.media, media);
+  assert.equal(playback.source, site + second);
+  assert.deepEqual(playback.previous, { sid: 1, nid: show.routes[0].episodes[0].nid });
+  assert.equal(playback.next, null);
+  assert.equal((await call(search + encodeURIComponent('https://gimytv.io.evil.test' + second))).status, 400);
+  assert.deepEqual(requests.map(request => request.url), [
+    site + '/voddetail2/202653122.html', site + second, site + '/_watch/101', site + '/_watch/102',
+  ]);
+});

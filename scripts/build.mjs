@@ -12,7 +12,7 @@ for (const file of ['hls.light.min.js', 'hls-LICENSE']) await copyFile(path.join
 await writeFile(path.join(out, 'tv', 'config.js'), '// The packaged TV app sets window.GIMY_API to the Worker address here.\n');
 // Concatenate the server modules into one Worker script; only the default export and the Durable Object class stay exported.
 const modules = [];
-for (const file of ['adapter.js', 'gimy.js', 'sync-server.js', 'worker.js']) {
+for (const file of ['adapter.js', 'gimytv.js', 'gimy.js', 'sync-server.js', 'worker.js']) {
   let code = (await readFile(path.join(root, 'src', file), 'utf8')).replace(/^import .*;\n/gm, '').replace(/^export \{[^}]*\} from .*;\n/gm, '');
   if (file !== 'worker.js') code = code.replace(/^export (?!class WatchHistory)/gm, '');
   modules.push(code);

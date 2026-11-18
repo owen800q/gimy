@@ -290,8 +290,9 @@
   }
   function poster(item, onSelect) {
     const art = posterArt(item.pic, item.title);
-    if (item.status) art.appendChild(h('span', { class: 'poster-badge', text: item.status }));
-    return button('poster', [art, h('div', { class: 'poster-title', text: item.title }), h('div', { class: 'poster-meta', text: item.cast || '' })], () => onSelect(item), { 'data-id': item.id, 'aria-label': [item.title, item.status].filter(Boolean).join('，') });
+    const badge = item.episode ? item.episode.label : item.status;
+    if (badge) art.appendChild(h('span', { class: 'poster-badge', text: badge }));
+    return button('poster', [art, h('div', { class: 'poster-title', text: item.title }), h('div', { class: 'poster-meta', text: item.cast || '' })], () => onSelect(item), { 'data-id': item.id, 'aria-label': [item.title, badge].filter(Boolean).join('，') });
   }
   const skeletons = n => h('div', { class: 'poster-grid' }, Array.from({ length: n }, () => h('div', { class: 'poster poster-skeleton' }, [h('div', { class: 'poster-art' })])));
   const spinner = label => h('div', { class: 'status' }, [h('span', { class: 'spinner' }), label ? h('span', { class: 'status-text', text: label }) : null]);
@@ -382,15 +383,15 @@
 
   function SearchScreen() {
     let generation = 0;
-    const results = h('div', { class: 'poster-grid' }), caption = h('p', { class: 'status-line', text: '用遙控器輸入繁體中文劇名，例如：鬼滅之刃。' }), tail = h('div');
-    const field = textField({ icon: 'search', placeholder: '按 OK 輸入劇名', autofocus: true, onSubmit: run });
+    const results = h('div', { class: 'poster-grid' }), caption = h('p', { class: 'status-line', text: '輸入繁體中文劇名或 gimytv.io 連結。' }), tail = h('div');
+    const field = textField({ icon: 'search', placeholder: '按 OK 輸入劇名或連結', maxlength: '240', autofocus: true, onSubmit: run });
     const el = h('div', { class: 'page', 'data-scroll': 'y', 'data-scroll-pad': '170' }, [
       h('header', { class: 'page-header' }, h('h1', { class: 'page-title', text: '搜尋' })),
       h('div', { class: 'sync-form' }, [field.el, button('btn btn-primary btn-lg', '搜尋', () => run(field.input.value.trim()))]),
       caption, results, tail,
     ]);
     async function run(q) {
-      if (!q) { caption.textContent = '請先輸入劇名。'; return; }
+      if (!q) { caption.textContent = '請先輸入劇名或連結。'; return; }
       const id = ++generation;
       clear(results); clear(tail).appendChild(spinner());
       caption.textContent = '正在搜尋「' + q + '」…';
@@ -398,7 +399,10 @@
         const data = await api('/api/search?q=' + encodeURIComponent(q));
         if (id !== generation) return;
         clear(tail);
-        data.items.forEach(item => results.appendChild(poster(item, openShow)));
+        data.items.forEach(item => results.appendChild(poster(item, show => {
+          if (show.episode) Router.push(PlayerScreen({ id: show.id, sid: show.episode.sid, nid: show.episode.nid }));
+          else openShow(show);
+        })));
         caption.textContent = data.items.length ? '找到 ' + data.items.length + ' 套與「' + q + '」相關的影片' : '找不到「' + q + '」。請用繁體中文劇名再試（簡體字搜尋不到）。';
         if (data.items.length) Focus.focus(results.firstChild);
       } catch (e) {
@@ -650,7 +654,8 @@
     // Samsung TVs play HLS natively; desktop browsers previewing /tv/ fall back to hls.js.
     function attach(data) {
       detach();
-      if (data.type === 'hls' && !video.canPlayType('application/vnd.apple.mpegurl') && window.Hls && window.Hls.isSupported()) {
+      const chromium = /Chrom(?:e|ium)\//.test(navigator.userAgent) && !/Tizen/i.test(navigator.userAgent);
+      if (data.type === 'hls' && (chromium || !video.canPlayType('application/vnd.apple.mpegurl')) && window.Hls && window.Hls.isSupported()) {
         hls = new window.Hls({ enableWorker: false, maxBufferLength: 30 });
         hls.on(window.Hls.Events.ERROR, (_, detail) => {
           if (!detail.fatal) return;

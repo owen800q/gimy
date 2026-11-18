@@ -1,5 +1,7 @@
 import { PlaybackError, SITE, TYPES, upstream, checkStatus, boundedText, exploreUrl, parseListing, parseDetail, parsePlayerConfig, classifyRoutes, parsePlayer, parseSuggest, mediaUrl } from './adapter.js';
 
+import { GIMY_TV_SITE, gimyTvId, gimyTvLink, gimyTvDetail, gimyTvWatchPaths, gimyTvMedia } from './gimytv.js';
+
 // Short-lived memory cache plus single-flight requests, so a TV grid does not fan out upstream.
 const memory = new Map();
 const pending = new Map();
@@ -18,7 +20,7 @@ async function cached(key, ttl, load) {
   return promise;
 }
 async function page(url, stage) {
-  const response = await upstream(url);
+  const response = await upstream(url, { headers: { Referer: new URL(url).origin + '/' } });
   checkStatus(response, stage);
   return boundedText(response);
 }
@@ -36,6 +38,14 @@ export async function browse(params) {
 
 export async function search(query) {
   const q = String(query || '').trim();
+  if (/^https?:\/\//i.test(q) && q.length <= 240) {
+    const link = gimyTvLink(q);
+    if (!link) throw new PlaybackError('請輸入 gimytv.io 的影片或集數網址。', 400);
+    const { id, title, pic, status, episodes } = await loadGimyTv(link.id);
+    const episode = episodes.find(item => item.path === link.episode);
+    if (link.episode && !episode) throw new PlaybackError('此連結的集數已不在原站列表。', 404);
+    return { items: [{ id, title, pic, status, ...(episode && { episode: { sid: 1, nid: episode.nid, label: episode.label } }) }] };
+  }
   if (!q || q.length > 80) throw new PlaybackError('請輸入 1 至 80 字的影片名稱。', 400);
   // /find/ pages and any `wd=` query string are behind the site's browser challenge; the path-style suggest route is not.
   const url = SITE + '/index.php/ajax/suggest/mid/1/limit/30/wd/' + encodeURIComponent(q);
@@ -51,7 +61,21 @@ async function playerFlags() {
   try { return await cached('playerconfig', 3600, async () => parsePlayerConfig(await page(SITE + '/static/js/playerconfig.js', '讀取播放器設定'))); }
   catch { return null; }
 }
+function loadGimyTv(id) {
+  return cached('detail:' + id, 300, async () => gimyTvDetail(
+    await page(GIMY_TV_SITE + '/voddetail2/' + id.slice(2) + '.html', '讀取影片資料'), id
+  ));
+}
+
 export async function detail(id) {
+  if (gimyTvId(id)) {
+    const { episodes, ...show } = await loadGimyTv(id);
+    const routes = episodes.length ? [{
+      sid: 1, name: '自動選擇線路', direct: null,
+      episodes: episodes.map(({ nid, label }) => ({ nid, label })),
+    }] : [];
+    return { ...show, routes, comments: [] };
+  }
   if (!/^\d{1,10}$/.test(id || '')) throw new PlaybackError('影片編號無效。', 400);
   return cached('detail:' + id, 300, async () => {
     const [html, flags] = await Promise.all([page(SITE + '/detail/' + id + '.html', '讀取影片資料'), playerFlags()]);
@@ -60,8 +84,36 @@ export async function detail(id) {
   });
 }
 
+async function resolveGimyTv(id, sid, nid) {
+  if (sid !== '1' || !/^\d{1,10}$/.test(nid || '')) throw new PlaybackError('線路或集數編號無效。', 400);
+  const show = await loadGimyTv(id);
+  const index = show.episodes.findIndex(item => item.nid === Number(nid));
+  if (index < 0) throw new PlaybackError('原站暫未提供此集數。', 404);
+  const episode = show.episodes[index];
+  const source = GIMY_TV_SITE + episode.path;
+  const target = offset => {
+    const item = show.episodes[index + offset];
+    return item ? { sid: 1, nid: item.nid } : null;
+  };
+  return cached('play:' + source, 120, async () => {
+    const paths = gimyTvWatchPaths(await page(source, '讀取播放頁面'));
+    let upstreamError;
+    for (const path of paths) {
+      try {
+        const media = gimyTvMedia(await page(GIMY_TV_SITE + path, '讀取影片線路'));
+        return { id, sid: 1, nid: episode.nid, title: show.title, type: /\.mp4$/i.test(new URL(media).pathname) ? 'mp4' : 'hls', media, next: target(1), previous: target(-1), source };
+      } catch (error) {
+        if (!(error instanceof PlaybackError)) throw error;
+        if (error.status !== 422) upstreamError = error;
+      }
+    }
+    throw upstreamError || new PlaybackError('原站暫未提供可直接播放的線路。', 422);
+  });
+}
+
 const smallInt = value => /^\d{1,5}$/.test(value || '') ? Number(value) : null;
 export async function resolve(id, sidInput, nidInput) {
+  if (gimyTvId(id)) return resolveGimyTv(id, sidInput, nidInput);
   const sid = smallInt(sidInput), nid = smallInt(nidInput);
   if (!/^\d{1,10}$/.test(id || '') || sid == null || nid == null) throw new PlaybackError('影片、線路或集數編號無效。', 400);
   const source = SITE + '/play/' + id + '-' + sid + '-' + nid + '.html';
